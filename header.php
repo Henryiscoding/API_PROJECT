@@ -1,31 +1,39 @@
 <?php
-//login get , post and update
-session_start();
-$token = (rand ( 10000 , 99999 ));
-$_SESSION["token"] = $token;
 
-$app->update('/update_token',  function () {
-   require_once 'db.php';
+if(!isset($_COOKIE[$cookie_1_name])) {
+  header("/login_user");
+} 
 
-   $stmt = $link->prepare("INSERT INTO `users`(`token`) VALUES ('?')");
-   $stmt->bind_param("i", $token);
+require_once './vendor/autoload.php';
 
-   $token = (rand ( 10000 , 99999 ));
-   $stmt->execute();
-});
-
-$app->get('/get_token',  function () {
+$app = new Slim\App();
+$app->get('/get_login',  function () {
 require_once 'db.php';
 
-  $query = "SELECT id  from users where token = $token";
+  $query = "SELECT id from users where token = $_COOKIE[$token_name]";
   $result = $link->query($query);
 
     while ($row = $result->fetch_assoc()){
-          $data[] = $row;
+          $data = $user_id;
     }
-
-    return json_encode($data);
 });
+
+$user_name = "user_id";
+setcookie($user_name, $user_id, time() + (86400), "/"); 
+
+$app->patch('/patch_token',  function () {
+  require_once 'db.php';
+
+  $token = (rand ( 10000 , 99999 ));
+  $token_name = "user_token";
+  setcookie($token_name, $token, time() + (86400), "/");
+
+  $stmt = $link->prepare("INSERT INTO `users`(`token`) VALUES ('?') where id = $user_id");
+  $stmt->bind_param("i", $token);
+
+  $stmt->execute();
+});
+
 
 $app->delete('/delete_token',  function () {
   require_once 'db.php'; 
@@ -36,5 +44,10 @@ $app->delete('/delete_token',  function () {
   } else {
     echo "Error deleting record: " . $link->error;
   }
-  });
-  
+});
+
+
+if(!isset($_COOKIE[$cookie_1_name])) {
+  header("login_user");
+} 
+?>
