@@ -1,6 +1,6 @@
 <?php
 
-if(!isset($_COOKIE[$cookie_1_name])) {
+if(!isset($_COOKIE[$user_id])) {
   header("/login_user");
 } 
 
