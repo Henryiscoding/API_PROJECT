@@ -1,8 +1,8 @@
 <?php
 
-$link = mysqli_connect("localhost", "root", "", "shop_db");
+$db_conn = mysqli_connect("localhost", "root", "", "shop_db");
  
-if($link === false){
+if($db_conn === false){
     echo "no connection";
     die("ERROR: Could not connect. " . mysqli_connect_error());
 }

@@ -8,7 +8,7 @@ $app->GET('/get_login',  function () {
   require_once 'db.php';
   
   $query = "SELECT name , email , password from users";
-  $result = $link->query($query);
+  $result = $bd_conn->query($query);
 
     while ($row = $result->fetch_assoc()){
           $data[] = $row;   
@@ -20,10 +20,11 @@ $app->GET('/get_login',  function () {
 $app->PATCH('/get_login_details',  function () {
   require_once('db.php');
 
-  $id = '';
-  $name = '';
-  $email = '';
-  $password = md5('');
+  $data = $request->getParsedBody();
+  $name = $data['name'];
+  $email = $data['email'];
+  $password = md5($data['password']);
+
   $query = "SELECT name , email , password FROM users";
 
   if ($query->num_rows > 0) {
@@ -55,13 +56,12 @@ $app->PATCH('/get_login_details',  function () {
   $token_var = $_COOKIE['token'];
 
   $updateDB = "UPDATE token = $token_var FROM users WHERE name = $name, email = $email";
-  $result = $link->query($updateDB);
+  $result = $bd_conn->query($updateDB);
 
   while ($row = $result->fetch_assoc()){
     $data[] = $row;  
   }
 
-  return json_encode($data);
 });
 
 $app->POST('/post_login',  function () {
@@ -75,11 +75,11 @@ $app->POST('/post_login',  function () {
     $password = md5($data['password']);
 
     $query = "INSERT INTO `users`(`name`, `email`, `password`) VALUES ('$name','$email','$password')";
-    if ($link->query($sql) === TRUE) {
-      $last_id = $link->insert_id;
+    if ($bd_conn->query($sql) === TRUE) {
+      $last_id = $bd_conn->insert_id;
       return "New record created successfully. Last inserted ID is: " . $last_id;
     } else {
-      return "Error: " . $sql . "<br>" . $link->error;
+      return "Error: " . $sql . "<br>" . $bd_conn->error;
     }
   }
   else {
@@ -95,7 +95,7 @@ $app->PATCH('/update_login',  function () {
     $data = $request->getParsedBody();
     $new_password = md5($data['new_password']);
   
-    $stmt = $link->prepare("UPDATE `users` SET `password`='?' WHERE id = '?'");
+    $stmt = $bd_conn->prepare("UPDATE `users` SET `password`='?' WHERE id = '?'");
     $stmt->bind_param('ii', $new_password, $_COOKIE['user_id']);
     
     if(!isset($_COOKIE[token])) {
@@ -116,13 +116,13 @@ $app->GET('/get_cart',  function () {
   require_once 'db.php';
 
   $user_id_var = $_COOKIE['user_id'] ;
-  $query = "SELECT  `name`, `price`, `quantity`, `image` FROM `cart` where user_id = $user_id_var";
-  $result = $link->query($query);
+  $query = "SELECT  `product_name`, `product_price`, `product_quantity`, `product_image` FROM `cart` where user_id = $user_id_var";
+  $result = $bd_conn->query($query);
 
   while ($row = $result->fetch_assoc()){
     $data[] = $row;
-    $original_qauntity = "cart_qauntity";
-    $row["qauntity"] = $qauntity_int;
+    $original_qauntity = "cart_product_qauntity";
+    $row["product_qauntity"] = $qauntity_int;
     setcookie($cart_qauntity, $qauntity_int, time() + (86400), "/");
   }
   return json_encode($data);
@@ -132,15 +132,15 @@ $app->POST('/post_cart',  function () {
   require_once 'db.php';
   if($_COOKIE['token'] != null){
     $data = $request->getParsedBody();
-    $id = $data['id'];
-    $pid = $data['pid'];
-    $cart_name = $data['cart_name'];
-    $cart_price = $data['cart_price'];
-    $cart_qauntity = $data['cart_qauntity'];
-    $cart_image = $data['cart_image'];
+    $id = $data['cart_id'];
+    $product_id = $data['product_id'];
+    $cart_name = $data['cart_product_name'];
+    $cart_price = $data['cart_product_price'];
+    $cart_qauntity = $data['cart_product_qauntity'];
+    $cart_image = $data['cart_product_image'];
     $user_id_var = $_COOKIE['user_id'] ;
-    $stmt = $link->prepare("INSERT INTO `cart`(`id`, `user_id`, `pid`, `name`, `price`, `quantity`, `image`) VALUES ('?','?','?','?','?','?','?')");
-    $stmt->bind_param("iiisiis", $id, $user_id_var, $pid, $cart_name, $cart_price, $cart_qauntity, $cart_image);
+    $stmt = $bd_conn->prepare("INSERT INTO `cart`(`cart_id`, `user_id`, `product_id`, `product_name`, `product_price`, `product_quantity`, `product_image`) VALUES ('?','?','?','?','?','?','?')");
+    $stmt->bind_param("iiisiis", $id, $user_id_var, $product_id, $cart_name, $cart_price, $cart_qauntity, $cart_image);
 
     if(( $_COOKIE[$qauntity_int] + $cart_qauntity) < 20){
       $stmt->execute();
@@ -161,14 +161,14 @@ $app->PATCH('/update_cart',  function () {
   if($_COOKIE['token'] != null){
     $data = $request->getParsedBody();
     $new_cart_qauntity = $data['new_cart_qauntity'];
-    $insert_pid = $data['pid'];
+    $insert_pid = $data['product_id'];
     $user_id_var = $_COOKIE['user_id'] ;
-    $query = "UPDATE `cart` SET `quantity`='$new_cart_qauntity' WHERE pid = '$insert_pid' AND user_id = $user_id_var ";
+    $query = "UPDATE `cart` SET `product_quantity`='$new_cart_qauntity' WHERE product_id = '$insert_pid' AND user_id = $user_id_var ";
    
-    if ($link->query($sql) === TRUE) {
+    if ($bd_conn->query($sql) === TRUE) {
       return "Record insertd successfully";
     } else {
-      return "Error updating record: " . $link->error;
+      return "Error updating record: " . $bd_conn->error;
     }
   }
   else {
@@ -184,11 +184,11 @@ $app->DELETE('/delete_cart',  function () {
     $delete_pid = $data['pid'];
     $user_id_var = $_COOKIE['user_id'] ;
 
-    $query = "DELETE FROM `cart` WHERE 'pid' = '$delete_pid' AND 'user_id' = '$user_id_var'";
-    if ($link->query($sql) === TRUE) {
+    $query = "DELETE FROM `cart` WHERE 'product_id' = '$delete_pid' AND 'user_id' = '$user_id_var'";
+    if ($bd_conn->query($sql) === TRUE) {
       return "Record deleted successfully";
     } else {
-      return "Error deleting record: " . $link->error;
+      return "Error deleting record: " . $bd_conn->error;
     }
   }
   else {
@@ -202,7 +202,7 @@ $app->GET('/get_products',  function () {
   require_once 'db.php';
   if($_COOKIE['token'] != null){
     $query = "SELECT * from products";
-    $result = $link->query($query);
+    $result = $bd_conn->query($query);
 
     while ($row = $result->fetch_assoc()){
       $data[] = $row;
@@ -222,8 +222,8 @@ $app->GET('/get_wishlist',  function () {
   $user_id_var = $_COOKIE['user_id'] ;
 
   if($_COOKIE['token'] != null){
-    $query = "SELECT  `name`, `price`, `qauntity`, `image` FROM `wishlist` WHERE user_id = $user_id_var";
-    $result = $link->query($query);
+    $query = "SELECT  `product_name`, `product_price`, `product_qauntity`, `product_image` FROM `wishlist` WHERE user_id = $user_id_var";
+    $result = $bd_conn->query($query);
 
       while ($row = $result->fetch_assoc()){
             $data[] = $row;
@@ -241,19 +241,19 @@ $app->POST('/post_wishlist',  function () {
   if($_COOKIE['token'] != null){
     $data = $request->getParsedBody();
     $id = $data['id'];
-    $pid = $data['pid'];
-    $wishlist_name = $data['wishlist_name'];
-    $wishlist_price = $data['wishlist_price'];
-    $wishlist_qauntity = $data['wishlist_qauntity'];
-    $wishlist_image = $data['wishlist_image'];
+    $product_id = $data['product_id'];
+    $wishlist_name = $data['wishlist_product_name'];
+    $wishlist_price = $data['wishlist_product_price'];
+    $wishlist_qauntity = $data['wishlist_product_qauntity'];
+    $wishlist_image = $data['wishlist_product_image'];
     $user_id_var = $_COOKIE['user_id'] ;
     
-    $query = "INSERT INTO `wishlist`(`id`, `user_id`, `pid`, `name`, `price`, `qauntity`, `image`) VALUES ('$id','$user_id_var','$pid','$wishlist_name','$wishlist_price','$wishlist_qauntity','$wishlist_image')";
-    if ($link->query($sql) === TRUE) {
-      $last_id = $link->insert_id;
+    $query = "INSERT INTO `wishlist`(`wishlist_id`, `user_id`, `product_id`, `product_name`, `product_price`, `product_qauntity`, `product_image`) VALUES ('$id','$user_id_var','$product_id','$wishlist_name','$wishlist_price','$wishlist_qauntity','$wishlist_image')";
+    if ($bd_conn->query($sql) === TRUE) {
+      $last_id = $bd_conn->insert_id;
       return "New record created successfully. Last inserted ID is: " . $last_id;
     } else {
-      return "Error: " . $sql . "<br>" . $link->error;
+      return "Error: " . $sql . "<br>" . $bd_conn->error;
     }
   }
   else {
@@ -264,3 +264,4 @@ $app->POST('/post_wishlist',  function () {
 $app->run();
 
 ?>
+
